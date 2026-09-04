@@ -1,42 +1,15 @@
-# Built application files
-*.apk
-*.aab
-*.ap_
-
-# Files for the ART/Dalvik VM
-*.dex
-
-# Java class files
-*.class
-
-# Generated files
-bin/
-gen/
-captures/
-.externalNativeBuild/
-.cxx/
-*.hprof
-
-# Gradle files
-.gradle/
-build/
-local.properties
-
-# Kotlin Gradle plugin data (NUEVO y esencial para Kotlin moderno)
-.kotlin/
-
-# IntelliJ / Android Studio
-.idea/
 *.iml
-*.ipr
-*.iws
-.navigation/
-
-# Keystore files
-*.jks
-*.keystore
-
-# Log/OS Files
-*.log
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
 .DS_Store
-Thumbs.db
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
