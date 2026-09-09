@@ -25,6 +25,9 @@ import com.example.taller1_componentes.game.GameEngine
 import com.example.taller1_componentes.sensors.OrientationSensor
 import com.example.taller1_componentes.ui.theme.Taller1_ComponentesTheme
 import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
+import com.example.taller1_componentes.game.Proximidad
 
 class MainActivity : ComponentActivity() {
 
@@ -129,9 +132,14 @@ fun PantallaJuego(
         }
     }
 
+    val estado = remember(direccion) {
+        Proximidad.calcular(direccion, game.targetDirection)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(estado.color)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -151,5 +159,18 @@ fun PantallaJuego(
             text = "Dirección escondida: ${game.targetDirection}°",
             modifier = Modifier.padding(top = 16.dp)
         )
+
+        Text(
+            text = estado.mensaje,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(top = 24.dp)
+        )
+
+        if (estado.encontrado) {
+            Text(
+                text = "Juego terminado",
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
     }
 }
