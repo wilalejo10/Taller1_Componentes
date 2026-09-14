@@ -115,6 +115,8 @@ fun PantallaJuego(
 ) {
 
     var direccion by remember { mutableStateOf(0) }
+    var tiempo by remember { mutableStateOf(0) }
+    var tiempoRestante by remember { mutableStateOf(60) }
 
     DisposableEffect(Unit) {
 
@@ -135,7 +137,20 @@ fun PantallaJuego(
     val estado = remember(direccion) {
         Proximidad.calcular(direccion, game.targetDirection)
     }
+    LaunchedEffect(estado.encontrado) {
+        while (!estado.encontrado) {
+            delay(1000)
+            tiempo++
+        }
+    }
+    LaunchedEffect(estado.encontrado) {
+        while (!estado.encontrado && tiempoRestante > 0) {
+            delay(1000)
+            tiempoRestante--
+        }
+    }
 
+    val seAcaboElTiempo = tiempoRestante <= 0 && !estado.encontrado
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -148,6 +163,14 @@ fun PantallaJuego(
         Text(
             text = "Juego iniciado",
             style = MaterialTheme.typography.headlineMedium
+        )
+        Text(
+            text = "Tiempo: ${tiempo}s",
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Text(
+            text = "Tiempo restante: ${tiempoRestante}s",
+            modifier = Modifier.padding(top = 8.dp)
         )
 
         Text(
@@ -171,6 +194,17 @@ fun PantallaJuego(
                 text = "Juego terminado",
                 modifier = Modifier.padding(top = 8.dp)
             )
+            Text(
+                text = "Tiempo total: ${tiempo}s",
+                modifier = Modifier.padding(top = 8.dp)
+            )
+
+            }
+        if (seAcaboElTiempo) {
+        Text(
+            text = "Se acab\u00f3 el tiempo, no lo encontraste",
+            modifier = Modifier.padding(top = 8.dp)
+        )
         }
     }
 }
