@@ -4,14 +4,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.taller1_componentes.game.GameEngine
 import com.example.taller1_componentes.game.Proximidad
@@ -19,11 +28,11 @@ import com.example.taller1_componentes.sensors.OrientationSensor
 import com.example.taller1_componentes.ui.theme.Taller1_ComponentesTheme
 import kotlinx.coroutines.delay
 
-enum class Pantalla { DASHBOARD, COMO_JUGAR, JUEGO, RESULTADO }
-
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             Taller1_ComponentesTheme {
                 EscondidasApp()
@@ -34,100 +43,70 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun EscondidasApp() {
-    var pantallaActual by remember { mutableStateOf(Pantalla.DASHBOARD) }
-    var mejorPuntaje by remember { mutableStateOf(0) }
-    var mejorTiempo by remember { mutableStateOf(0) }
+
+    var jugando by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val sensor = remember { OrientationSensor(context) }
-    val game = remember { GameEngine() }
+    val sensor = remember {
+        OrientationSensor(context = context)
+    }
 
-    when (pantallaActual) {
-        Pantalla.DASHBOARD -> PantallaDashboard(
-            mejorPuntaje = mejorPuntaje,
-            mejorTiempo = mejorTiempo,
-            onIniciar = {
+    val game = remember {
+        GameEngine()
+    }
+
+    if (!jugando) {
+        PantallaInicio(
+            onEmpezar = {
                 game.startGame()
-                pantallaActual = Pantalla.JUEGO
-            },
-            onComoJugar = { pantallaActual = Pantalla.COMO_JUGAR }
+                jugando = true
+            }
         )
-        Pantalla.COMO_JUGAR -> PantallaComoJugar(
-            onVolver = { pantallaActual = Pantalla.DASHBOARD }
-        )
-        Pantalla.JUEGO -> PantallaJuego(
+    } else {
+        PantallaJuego(
             sensor = sensor,
             game = game,
-            onTerminar = {
-                if (game.puntaje > mejorPuntaje) mejorPuntaje = game.puntaje
-                if (mejorTiempo == 0 || (game.tiempoEmpleado < mejorTiempo && game.precision > 0)) {
-                    mejorTiempo = game.tiempoEmpleado
-                }
-                pantallaActual = Pantalla.RESULTADO
+            onReiniciarApp = {
+                jugando = false
             }
-        )
-        Pantalla.RESULTADO -> PantallaResultado(
-            game = game,
-            mejorTiempo = mejorTiempo,
-            onReiniciar = {
-                game.reiniciarJuego()
-                pantallaActual = Pantalla.JUEGO
-            },
-            onVolverMenu = { pantallaActual = Pantalla.DASHBOARD }
         )
     }
 }
 
 @Composable
-fun PantallaDashboard(
-    mejorPuntaje: Int,
-    mejorTiempo: Int,
-    onIniciar: () -> Unit,
-    onComoJugar: () -> Unit
+fun PantallaInicio(
+    onEmpezar: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("CALIENTE / FRÍO", style = MaterialTheme.typography.headlineLarge)
-        Text("¡Encuéntralo!", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 24.dp))
 
-        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Mejor Tiempo: ${if (mejorTiempo > 0) "${mejorTiempo}s" else "--"}")
-                Text("Mejor Puntuación: $mejorPuntaje pts")
-            }
-        }
-
-        Button(onClick = onIniciar, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-            Text("NUEVA PARTIDA")
-        }
-        OutlinedButton(onClick = onComoJugar, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-            Text("CÓMO JUGAR")
-        }
-    }
-}
-
-@Composable
-fun PantallaComoJugar(onVolver: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("¿Cómo Jugar?", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "1. El personaje se esconderá en un punto cardinal aleatorio (0° a 360°).\n" +
-                    "2. Gira y mueve tu teléfono para buscar la dirección objetivo.\n" +
-                    "3. El color de la pantalla cambiará según la distancia:\n" +
-                    "   • Azul: Frío\n   • Amarillo: Tibio\n   • Rojo: Caliente\n   • Verde: ¡Encontrado!\n" +
-                    "4. Encuéntralo antes de que se agote el tiempo para obtener la máxima puntuación.",
-            textAlign = TextAlign.Start
+            text = "ESCONDIDAS",
+            style = MaterialTheme.typography.headlineLarge
         )
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = onVolver) { Text("ENTENDIDO") }
+
+        Text(
+            text = "Encuentra la dirección escondida",
+            modifier = Modifier.padding(top = 16.dp)
+        )
+
+        Text(
+            text = "Mueve y gira tu celular para buscar la dirección correcta.\n\n" +
+                    "Verás si estás Frío, Tibio o Caliente según qué tan cerca estés.",
+            modifier = Modifier.padding(top = 16.dp)
+        )
+
+        Button(
+            onClick = onEmpezar,
+            modifier = Modifier.padding(top = 32.dp)
+        ) {
+            Text("EMPEZAR")
+        }
     }
 }
 
@@ -135,38 +114,58 @@ fun PantallaComoJugar(onVolver: () -> Unit) {
 fun PantallaJuego(
     sensor: OrientationSensor,
     game: GameEngine,
-    onTerminar: () -> Unit
+    onReiniciarApp: () -> Unit
 ) {
+
     var direccion by remember { mutableStateOf(0) }
-    var tiempoRestante by remember { mutableStateOf(game.tiempoTotal) }
+    var tiempo by remember { mutableStateOf(0) }
+    var tiempoRestante by remember { mutableStateOf(60) }
 
     DisposableEffect(Unit) {
         sensor.start()
-        onDispose { sensor.stop() }
-    }
-
-    LaunchedEffect(Unit) {
-        while (tiempoRestante > 0) {
-            delay(1000)
-            tiempoRestante--
+        onDispose {
+            sensor.stop()
         }
     }
 
-    LaunchedEffect(Unit) {
-        while (true) {
+    val estado = remember(direccion) {
+        Proximidad.calcular(direccion, game.targetDirection)
+    }
+
+    val juegoFinalizado = estado.encontrado || tiempoRestante <= 0
+
+    // Lectura del sensor
+    LaunchedEffect(juegoFinalizado) {
+        while (!juegoFinalizado) {
             direccion = sensor.direction
             delay(100)
         }
     }
 
-    val estado = remember(direccion) { Proximidad.calcular(direccion, game.targetDirection) }
-
-    LaunchedEffect(estado.encontrado, tiempoRestante) {
-        if (estado.encontrado || tiempoRestante <= 0) {
-            game.calcularResultados(tiempoRestante, direccion)
-            onTerminar()
+    // Cronómetro de tiempo transcurrido
+    LaunchedEffect(juegoFinalizado) {
+        while (!juegoFinalizado) {
+            delay(1000)
+            tiempo++
         }
     }
+
+    // Cronómetro regresivo
+    LaunchedEffect(juegoFinalizado) {
+        while (!juegoFinalizado) {
+            delay(1000)
+            tiempoRestante--
+        }
+    }
+
+    // 1 y 2. Detectar cuando finaliza (por encontrar o tiempo agotado) y calcular métricas
+    LaunchedEffect(juegoFinalizado) {
+        if (juegoFinalizado) {
+            game.calcularResultados(tiempoRestante = tiempoRestante, direccionActual = direccion)
+        }
+    }
+
+    val seAcaboElTiempo = tiempoRestante <= 0 && !estado.encontrado
 
     Column(
         modifier = Modifier
@@ -174,59 +173,89 @@ fun PantallaJuego(
             .background(estado.color)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("⏱ 00:${tiempoRestante.toString().padStart(2, '0')}", style = MaterialTheme.typography.titleLarge)
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Dirección: $direccion°", style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(estado.mensaje, style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center)
-        }
-
-        Text("Gira el teléfono para buscar", style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
-fun PantallaResultado(
-    game: GameEngine,
-    mejorTiempo: Int,
-    onReiniciar: () -> Unit,
-    onVolverMenu: () -> Unit
-) {
-    val exito = game.precision > 0
-
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+
         Text(
-            text = if (exito) "¡LO ENCONTRASTE!" else "¡TIEMPO AGOTADO!",
-            style = MaterialTheme.typography.headlineLarge
+            text = "Juego iniciado",
+            style = MaterialTheme.typography.headlineMedium
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = "Tiempo: ${tiempo}s",
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Text(
+            text = "Tiempo restante: ${tiempoRestante}s",
+            modifier = Modifier.padding(top = 8.dp)
+        )
 
-        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Tiempo empleado: ${game.tiempoEmpleado}s")
-                Text("Precisión: ${game.precision}%")
-                Text("Puntuación final: ${game.puntaje} pts", style = MaterialTheme.typography.titleLarge)
+        Text(
+            text = "Dirección actual: $direccion°",
+            modifier = Modifier.padding(top = 16.dp)
+        )
+
+        Text(
+            text = "Dirección escondida: ${game.targetDirection}°",
+            modifier = Modifier.padding(top = 16.dp)
+        )
+
+        Text(
+            text = estado.mensaje,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(top = 24.dp)
+        )
+
+        // Muestra de métricas al ganar
+        if (estado.encontrado) {
+            Text(
+                text = "¡Juego terminado! Encontraste la dirección",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+            Text(
+                text = "Tiempo empleado: ${game.tiempoEmpleado}s",
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            Text(
+                text = "Precisión: ${game.precision}%",
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Text(
+                text = "Puntaje total: ${game.puntaje} pts",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        // Muestra de estado al perder
+        if (seAcaboElTiempo) {
+            Text(
+                text = "Se acabó el tiempo, no lo encontraste",
+                modifier = Modifier.padding(top = 16.dp)
+            )
+            Text(
+                text = "Precisión: ${game.precision}%",
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Text(
+                text = "Puntaje total: ${game.puntaje} pts",
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+
+        if (juegoFinalizado) {
+            Button(
+                onClick = {
+                    game.reiniciarJuego()
+                    tiempo = 0
+                    tiempoRestante = 60
+                    direccion = sensor.direction // Lee la dirección actual del sensor de inmediato
+                },
+                modifier = Modifier.padding(top = 24.dp)
+            ) {
+                Text("REINICIAR JUEGO")
             }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onReiniciar, modifier = Modifier.fillMaxWidth()) {
-            Text("JUGAR DE NUEVO")
-        }
-        OutlinedButton(onClick = onVolverMenu, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Text("VOLVER AL MENÚ")
         }
     }
 }
