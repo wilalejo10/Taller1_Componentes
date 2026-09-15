@@ -3,37 +3,27 @@ package com.example.taller1_componentes
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.taller1_componentes.game.GameEngine
+import com.example.taller1_componentes.game.Proximidad
 import com.example.taller1_componentes.sensors.OrientationSensor
 import com.example.taller1_componentes.ui.theme.Taller1_ComponentesTheme
 import kotlinx.coroutines.delay
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.background
-import com.example.taller1_componentes.game.Proximidad
+
+enum class Pantalla { DASHBOARD, COMO_JUGAR, JUEGO, RESULTADO }
 
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             Taller1_ComponentesTheme {
                 EscondidasApp()
@@ -44,86 +34,121 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun EscondidasApp() {
-
-    var jugando by remember { mutableStateOf(false) }
+    var pantallaActual by remember { mutableStateOf(Pantalla.DASHBOARD) }
+    var mejorPuntaje by remember { mutableStateOf(0) }
+    var mejorTiempo by remember { mutableStateOf(0) }
 
     val context = LocalContext.current
-    val sensor = remember {
-        OrientationSensor(context = context)
-    }
+    val sensor = remember { OrientationSensor(context) }
+    val game = remember { GameEngine() }
 
-    val game = remember {
-        GameEngine()
-    }
-
-    if (!jugando) {
-        PantallaInicio(
-            onEmpezar = {
+    when (pantallaActual) {
+        Pantalla.DASHBOARD -> PantallaDashboard(
+            mejorPuntaje = mejorPuntaje,
+            mejorTiempo = mejorTiempo,
+            onIniciar = {
                 game.startGame()
-                jugando = true
+                pantallaActual = Pantalla.JUEGO
+            },
+            onComoJugar = { pantallaActual = Pantalla.COMO_JUGAR }
+        )
+        Pantalla.COMO_JUGAR -> PantallaComoJugar(
+            onVolver = { pantallaActual = Pantalla.DASHBOARD }
+        )
+        Pantalla.JUEGO -> PantallaJuego(
+            sensor = sensor,
+            game = game,
+            onTerminar = {
+                if (game.puntaje > mejorPuntaje) mejorPuntaje = game.puntaje
+                if (mejorTiempo == 0 || (game.tiempoEmpleado < mejorTiempo && game.precision > 0)) {
+                    mejorTiempo = game.tiempoEmpleado
+                }
+                pantallaActual = Pantalla.RESULTADO
             }
         )
-    } else {
-        PantallaJuego(
-            sensor = sensor,
-            game = game
+        Pantalla.RESULTADO -> PantallaResultado(
+            game = game,
+            mejorTiempo = mejorTiempo,
+            onReiniciar = {
+                game.reiniciarJuego()
+                pantallaActual = Pantalla.JUEGO
+            },
+            onVolverMenu = { pantallaActual = Pantalla.DASHBOARD }
         )
     }
 }
 
 @Composable
-fun PantallaInicio(
-    onEmpezar: () -> Unit
+fun PantallaDashboard(
+    mejorPuntaje: Int,
+    mejorTiempo: Int,
+    onIniciar: () -> Unit,
+    onComoJugar: () -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Text("CALIENTE / FRÍO", style = MaterialTheme.typography.headlineLarge)
+        Text("¡Encuéntralo!", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 24.dp))
 
-        Text(
-            text = "ESCONDIDAS",
-            style = MaterialTheme.typography.headlineLarge
-        )
-
-        Text(
-            text = "Encuentra la dirección escondida",
-            modifier = Modifier.padding(top = 16.dp)
-        )
-
-        Text(
-            text = "Mueve y gira tu celular para buscar la dirección correcta.\n\n" +
-                    "Verás si estás Frío, Tibio o Caliente según qué tan cerca estés.",
-            modifier = Modifier.padding(top = 16.dp)
-        )
-
-        Button(
-            onClick = onEmpezar,
-            modifier = Modifier.padding(top = 32.dp)
-        ) {
-            Text("EMPEZAR")
+        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Mejor Tiempo: ${if (mejorTiempo > 0) "${mejorTiempo}s" else "--"}")
+                Text("Mejor Puntuación: $mejorPuntaje pts")
+            }
         }
+
+        Button(onClick = onIniciar, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            Text("NUEVA PARTIDA")
+        }
+        OutlinedButton(onClick = onComoJugar, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            Text("CÓMO JUGAR")
+        }
+    }
+}
+
+@Composable
+fun PantallaComoJugar(onVolver: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("¿Cómo Jugar?", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "1. El personaje se esconderá en un punto cardinal aleatorio (0° a 360°).\n" +
+                    "2. Gira y mueve tu teléfono para buscar la dirección objetivo.\n" +
+                    "3. El color de la pantalla cambiará según la distancia:\n" +
+                    "   • Azul: Frío\n   • Amarillo: Tibio\n   • Rojo: Caliente\n   • Verde: ¡Encontrado!\n" +
+                    "4. Encuéntralo antes de que se agote el tiempo para obtener la máxima puntuación.",
+            textAlign = TextAlign.Start
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = onVolver) { Text("ENTENDIDO") }
     }
 }
 
 @Composable
 fun PantallaJuego(
     sensor: OrientationSensor,
-    game: GameEngine
+    game: GameEngine,
+    onTerminar: () -> Unit
 ) {
-
     var direccion by remember { mutableStateOf(0) }
-    var tiempo by remember { mutableStateOf(0) }
-    var tiempoRestante by remember { mutableStateOf(60) }
+    var tiempoRestante by remember { mutableStateOf(game.tiempoTotal) }
 
     DisposableEffect(Unit) {
-
         sensor.start()
+        onDispose { sensor.stop() }
+    }
 
-        onDispose {
-            sensor.stop()
+    LaunchedEffect(Unit) {
+        while (tiempoRestante > 0) {
+            delay(1000)
+            tiempoRestante--
         }
     }
 
@@ -134,77 +159,74 @@ fun PantallaJuego(
         }
     }
 
-    val estado = remember(direccion) {
-        Proximidad.calcular(direccion, game.targetDirection)
-    }
-    LaunchedEffect(estado.encontrado) {
-        while (!estado.encontrado) {
-            delay(1000)
-            tiempo++
-        }
-    }
-    LaunchedEffect(estado.encontrado) {
-        while (!estado.encontrado && tiempoRestante > 0) {
-            delay(1000)
-            tiempoRestante--
+    val estado = remember(direccion) { Proximidad.calcular(direccion, game.targetDirection) }
+
+    LaunchedEffect(estado.encontrado, tiempoRestante) {
+        if (estado.encontrado || tiempoRestante <= 0) {
+            game.calcularResultados(tiempoRestante, direccion)
+            onTerminar()
         }
     }
 
-    val seAcaboElTiempo = tiempoRestante <= 0 && !estado.encontrado
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(estado.color)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("⏱ 00:${tiempoRestante.toString().padStart(2, '0')}", style = MaterialTheme.typography.titleLarge)
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Dirección: $direccion°", style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(estado.mensaje, style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center)
+        }
+
+        Text("Gira el teléfono para buscar", style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+fun PantallaResultado(
+    game: GameEngine,
+    mejorTiempo: Int,
+    onReiniciar: () -> Unit,
+    onVolverMenu: () -> Unit
+) {
+    val exito = game.precision > 0
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-
         Text(
-            text = "Juego iniciado",
-            style = MaterialTheme.typography.headlineMedium
+            text = if (exito) "¡LO ENCONTRASTE!" else "¡TIEMPO AGOTADO!",
+            style = MaterialTheme.typography.headlineLarge
         )
-        Text(
-            text = "Tiempo: ${tiempo}s",
-            modifier = Modifier.padding(top = 8.dp)
-        )
-        Text(
-            text = "Tiempo restante: ${tiempoRestante}s",
-            modifier = Modifier.padding(top = 8.dp)
-        )
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Text(
-            text = "Dirección actual: $direccion°",
-            modifier = Modifier.padding(top = 16.dp)
-        )
-
-        Text(
-            text = "Dirección escondida: ${game.targetDirection}°",
-            modifier = Modifier.padding(top = 16.dp)
-        )
-
-        Text(
-            text = estado.mensaje,
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(top = 24.dp)
-        )
-
-        if (estado.encontrado) {
-            Text(
-                text = "Juego terminado",
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Text(
-                text = "Tiempo total: ${tiempo}s",
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
+        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Tiempo empleado: ${game.tiempoEmpleado}s")
+                Text("Precisión: ${game.precision}%")
+                Text("Puntuación final: ${game.puntaje} pts", style = MaterialTheme.typography.titleLarge)
             }
-        if (seAcaboElTiempo) {
-        Text(
-            text = "Se acab\u00f3 el tiempo, no lo encontraste",
-            modifier = Modifier.padding(top = 8.dp)
-        )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = onReiniciar, modifier = Modifier.fillMaxWidth()) {
+            Text("JUGAR DE NUEVO")
+        }
+        OutlinedButton(onClick = onVolverMenu, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Text("VOLVER AL MENÚ")
         }
     }
 }
