@@ -20,7 +20,7 @@ object Proximidad {
 
         return when {
             diferencia <= 10 -> EstadoProximidad(
-                mensaje = "¡FELCICITACIONES LO ENCONTRASTE!",
+                mensaje = "¡SUPER!",
                 color = Color(0xFF85EE0D),
                 encontrado = true
             )
